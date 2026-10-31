@@ -2,7 +2,7 @@ import os
 import re
 import tempfile
 import streamlit as st
-from moviepy.editor import (
+from moviepy import (
     AudioFileClip,
     CompositeVideoClip,
     ImageClip,
@@ -99,16 +99,16 @@ if st.button("⚡ Generate Video", type="primary", use_container_width=True):
                     ext = os.path.splitext(m_path)[1].lower()
 
                     if ext in [".png", ".jpg", ".jpeg", ".webp"]:
-                        clip = ImageClip(m_path).set_duration(dur).resize(height=height)
+                        clip = ImageClip(m_path).with_duration(dur).resized(height=height)
                     else:
-                        clip = VideoFileClip(m_path).subclip(0, dur).resize(height=height)
+                        clip = VideoFileClip(m_path).subclipped(0, dur).resized(height=height)
 
-                    clip = clip.set_position("center")
+                    clip = clip.with_position("center")
 
                     if "Yellow" in style_choice:
                         txt = TextClip(
-                            seg["text"],
-                            fontsize=font_size,
+                            text=seg["text"],
+                            font_size=font_size,
                             font="Helvetica-Bold",
                             color="yellow",
                             stroke_color="black",
@@ -118,8 +118,8 @@ if st.button("⚡ Generate Video", type="primary", use_container_width=True):
                         )
                     elif "Box Banner" in style_choice:
                         txt = TextClip(
-                            seg["text"],
-                            fontsize=font_size,
+                            text=seg["text"],
+                            font_size=font_size,
                             font="Helvetica-Bold",
                             color="white",
                             bg_color="black",
@@ -128,8 +128,8 @@ if st.button("⚡ Generate Video", type="primary", use_container_width=True):
                         )
                     else:
                         txt = TextClip(
-                            seg["text"],
-                            fontsize=font_size,
+                            text=seg["text"],
+                            font_size=font_size,
                             font="Helvetica-Bold",
                             color="white",
                             stroke_color="#222222",
@@ -138,16 +138,15 @@ if st.button("⚡ Generate Video", type="primary", use_container_width=True):
                             size=(text_w, None),
                         )
 
-                    txt = txt.set_duration(dur).set_position(("center", int(height * 0.80)))
-                    scene = CompositeVideoClip([clip, txt], size=(width, height)).set_duration(dur)
-                    scene = scene.crossfadein(0.2)
+                    txt = txt.with_duration(dur).with_position(("center", int(height * 0.80)))
+                    scene = CompositeVideoClip([clip, txt], size=(width, height)).with_duration(dur)
                     clips.append(scene)
 
                 final_sequence = concatenate_videoclips(clips, method="compose")
                 voice = AudioFileClip(audio_path)
                 if voice.duration > final_sequence.duration:
-                    voice = voice.subclip(0, final_sequence.duration)
-                final_sequence = final_sequence.set_audio(voice)
+                    voice = voice.subclipped(0, final_sequence.duration)
+                final_sequence = final_sequence.with_audio(voice)
 
                 output_path = os.path.join(tmpdir, "final_video.mp4")
                 final_sequence.write_videofile(
@@ -170,4 +169,4 @@ if st.button("⚡ Generate Video", type="primary", use_container_width=True):
                     mime="video/mp4",
                     use_container_width=True,
                 )
-              
+                
