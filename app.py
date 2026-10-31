@@ -30,9 +30,10 @@ st.subheader("2. Voiceover Audio")
 audio_file = st.file_uploader("Upload Audio (.mp3, .wav, .m4a)", type=["mp3", "wav", "m4a"])
 
 # 3. Media Upload
-st.subheader("3. Images / Clips")
+st.subheader("3. Media Files")
+st.caption("Name format: Scene_001.png, Scene_002.mp4, etc.")
 media_files = st.file_uploader(
-    "Upload Media (Must match timestamp line count in exact order)",
+    "Upload Media Files",
     type=["png", "jpg", "jpeg", "webp", "mp4", "mov"],
     accept_multiple_files=True,
 )
@@ -44,6 +45,7 @@ with col1:
     ratio_choice = st.selectbox("Aspect Ratio", ["16:9 Landscape (YouTube)", "9:16 Portrait (Shorts)"])
 with col2:
     style_choice = st.selectbox("Caption Style", ["Bold Yellow (Stroke)", "Classic White (Box Banner)", "Minimal White"])
+
 
 def parse_timestamps(raw_text):
     pattern = r"(\d+):(\d+)\s*-\s*(\d+):(\d+)\s*[:\|]\s*(.+)"
@@ -59,7 +61,27 @@ def parse_timestamps(raw_text):
                 parsed.append({"start": start, "end": end, "duration": duration, "text": text.strip()})
     return parsed
 
-# 5. Render
+
+def extract_scene_number(filename):
+    # Extracts the exact number after Scene_ (e.g. Scene_001 -> 1, Scene_002 -> 2)
+    match = re.search(r"scene[_\s-]*(\d+)", filename, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+    # Fallback if filename starts directly with digits (e.g. 001.png)
+    lead_match = re.match(r"^(\d+)", filename)
+    if lead_match:
+        return int(lead_match.group(1))
+    return 999999
+
+
+# 5. Order Preview (Shows order before generating)
+if media_files:
+    sorted_media_files = sorted(media_files, key=lambda f: extract_scene_number(f.name))
+    with st.expander("👀 View Media Order (Tap to verify)", expanded=False):
+        for idx, f in enumerate(sorted_media_files, 1):
+            st.text(f"Clip {idx} ➔ {f.name}")
+
+# 6. Render Button
 if st.button("⚡ Generate Video", type="primary", use_container_width=True):
     segments = parse_timestamps(script_text)
 
@@ -67,9 +89,14 @@ if st.button("⚡ Generate Video", type="primary", use_container_width=True):
         st.error("Please add valid timestamp lines (e.g. 0:00 - 0:05 | Subtitle).")
     elif not audio_file:
         st.error("Please upload your audio file.")
+    elif not media_files:
+        st.error("Please upload media files.")
     elif len(segments) != len(media_files):
         st.error(f"Mismatch: Script has {len(segments)} lines, but you uploaded {len(media_files)} files.")
     else:
+        # Strictly sort files by Scene_001, Scene_002...
+        sorted_media_files = sorted(media_files, key=lambda f: extract_scene_number(f.name))
+
         with st.spinner("Rendering your video in the cloud..."):
             with tempfile.TemporaryDirectory() as tmpdir:
                 audio_path = os.path.join(tmpdir, "voice.mp3")
@@ -77,7 +104,7 @@ if st.button("⚡ Generate Video", type="primary", use_container_width=True):
                     f.write(audio_file.read())
 
                 saved_media = []
-                for idx, mf in enumerate(media_files):
+                for idx, mf in enumerate(sorted_media_files):
                     ext = os.path.splitext(mf.name)[1]
                     m_path = os.path.join(tmpdir, f"media_{idx}{ext}")
                     with open(m_path, "wb") as f:
